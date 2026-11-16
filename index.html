@@ -95,7 +95,8 @@ textarea{min-height:80px;resize:vertical}
 </main>
 <div id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- 国内极速 CDN，解决 404 报错 -->
+<script src="https://cdn.bootcdn.net/ajax/libs/supabase-js/2.39.8/umd/supabase.js"></script>
 <script>
 // ====== 填写你的 Supabase 信息 ======
 const SUPABASE_URL = 'https://sdelfnsqkxlqqbirkzds.supabase.co';
@@ -132,7 +133,6 @@ function toast(msg, isErr){
   toastTimer = setTimeout(()=>el.className='', 2600);
 }
 
-// ---------- 标签页 ----------
 document.querySelectorAll('.tabs').forEach(tabs=>{
   tabs.addEventListener('click', e=>{
     const btn = e.target.closest('.tab'); if(!btn) return;
@@ -144,18 +144,11 @@ document.querySelectorAll('.tabs').forEach(tabs=>{
   });
 });
 
-// ---------- 公告 ----------
 async function loadNotices(){
   const box = document.getElementById('noticeList');
-  const { data, error } = await supabase
-    .from('notices')
-    .select('*')
-    .order('important', { ascending: false })
-    .order('created_at', { ascending: false });
-
+  const { data, error } = await supabase.from('notices').select('*').order('important', { ascending: false }).order('created_at', { ascending: false });
   if(error){ box.innerHTML = emptyBox('公告加载失败，请稍后刷新'); return; }
   if(!data.length){ box.innerHTML = emptyBox('暂无公告'); return; }
-
   box.innerHTML = data.map(n=>`
     <div class="item">
       <h3>${n.important?'<span class="tag red">置顶</span>':''}${esc(n.title)}</h3>
@@ -165,9 +158,7 @@ async function loadNotices(){
   `).join('');
 }
 
-// ---------- 上报表单 ----------
 const reportForm = document.getElementById('reportForm');
-
 function syncKind(){
   const kind = reportForm.querySelector('input[name="kind"]:checked').value;
   document.getElementById('category').innerHTML = CATS[kind].map(c=>`<option value="${c}">${c}</option>`).join('');
@@ -187,15 +178,9 @@ reportForm.addEventListener('submit', async e=>{
   const f = e.target;
   const kind = f.querySelector('input[name="kind"]:checked').value;
   const data = {
-    kind,
-    category: f.category.value,
-    location: f.location.value.trim(),
-    title: f.title.value.trim(),
-    description: f.description.value.trim(),
-    contact: f.contact.value.trim(),
-    phone: f.phone.value.trim(),
-    appoint: kind==='personal' ? f.appoint.value : '',
-    status: 'pending'
+    kind, category: f.category.value, location: f.location.value.trim(), title: f.title.value.trim(),
+    description: f.description.value.trim(), contact: f.contact.value.trim(), phone: f.phone.value.trim(),
+    appoint: kind==='personal' ? f.appoint.value : '', status: 'pending'
   };
 
   if(!data.location) return toast('请填写具体位置', true);
@@ -205,13 +190,10 @@ reportForm.addEventListener('submit', async e=>{
 
   const btn = f.querySelector('button[type="submit"]');
   btn.disabled = true; btn.textContent = '提交中…';
-
   const { error } = await supabase.from('issues').insert([data]);
-
   btn.disabled = false; btn.textContent = '提交上报';
 
   if(error){ toast('提交失败：' + error.message, true); return; }
-
   f.reset();
   reportForm.querySelectorAll('.radio-row label').forEach(l=>l.classList.toggle('on', l.querySelector('input').checked));
   syncKind();
@@ -220,17 +202,11 @@ reportForm.addEventListener('submit', async e=>{
   loadMine();
 });
 
-// ---------- 我的上报 ----------
 async function loadMine(){
   const box = document.getElementById('mineList');
-  const { data, error } = await supabase
-    .from('issues')
-    .select('*')
-    .order('created_at', { ascending: false });
-
+  const { data, error } = await supabase.from('issues').select('*').order('created_at', { ascending: false });
   if(error){ box.innerHTML = emptyBox('加载失败，请刷新重试'); return; }
   if(!data.length){ box.innerHTML = emptyBox('您还没有提交过问题反馈'); return; }
-
   box.innerHTML = data.map(i=>{
     const st = STATUS[i.status] || STATUS.pending;
     const kindTag = i.kind==='public' ? '<span class="tag blue">公共问题</span>' : '<span class="tag purple">个人报修</span>';
@@ -242,14 +218,12 @@ async function loadMine(){
         <div><b>位置：</b>${esc(i.location)}</div>
         <div><b>联系人：</b>${esc(i.contact)} ${esc(i.phone)}</div>
         <div><b>上报：</b>${fmt(i.created_at)}</div>
-        ${i.kind==='personal' && i.appoint ? `<div><b>预约：</b>${fmt(i.appoint)}</div>` : ''}
       </div>
       ${i.reply ? `<div style="background:#f0fdf4;border-left:3px solid #15803d;padding:8px 12px;font-size:13px;color:#166534"><b>物业回复：</b>${esc(i.reply)}</div>` : ''}
     </div>`;
   }).join('');
 }
 
-// ---------- 启动 ----------
 loadNotices();
 loadMine();
 </script>

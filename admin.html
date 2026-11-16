@@ -95,12 +95,13 @@ textarea{min-height:80px;resize:vertical}
 </main>
 <div id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- 国内极速 CDN，解决 404 报错 -->
+<script src="https://cdn.bootcdn.net/ajax/libs/supabase-js/2.39.8/umd/supabase.js"></script>
 <script>
-// ====== 填写你的 Supabase 信息（与居民端相同） ======
+// ====== 填写你的 Supabase 信息 ======
 const SUPABASE_URL = 'https://sdelfnsqkxlqqbirkzds.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_4J-OF-nVY5dt-qxr5SreXQ_EWWxBt1X';
-// =================================================
+// ===================================
 
 const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
@@ -129,7 +130,6 @@ function toast(msg, isErr){
   toastTimer = setTimeout(()=>el.className='', 2600);
 }
 
-// ---------- 标签页 ----------
 document.querySelectorAll('.tabs').forEach(tabs=>{
   tabs.addEventListener('click', e=>{
     const btn = e.target.closest('.tab'); if(!btn) return;
@@ -141,17 +141,13 @@ document.querySelectorAll('.tabs').forEach(tabs=>{
   });
 });
 
-// ---------- 业务表单 ----------
 async function loadIssues(){
   const box = document.getElementById('issueList');
   let query = supabase.from('issues').select('*').order('created_at', { ascending: false });
   if(adminFilter !== 'all') query = query.eq('status', adminFilter);
-
   const { data, error } = await query;
-
   if(error){ box.innerHTML = emptyBox('加载失败，请刷新重试'); return; }
   if(!data.length){ box.innerHTML = emptyBox('该分类下暂无记录'); return; }
-
   box.innerHTML = data.map(i=>{
     const st = STATUS[i.status] || STATUS.pending;
     const kindTag = i.kind==='public' ? '<span class="tag blue">公共</span>' : '<span class="tag purple">个人</span>';
@@ -163,7 +159,6 @@ async function loadIssues(){
         <div><b>位置：</b>${esc(i.location)}</div>
         <div><b>联系：</b>${esc(i.contact)} ${esc(i.phone)}</div>
         <div><b>时间：</b>${fmt(i.created_at)}</div>
-        ${i.kind==='personal' && i.appoint ? `<div><b>预约：</b>${fmt(i.appoint)}</div>` : ''}
       </div>
       ${i.reply ? `<div style="background:#f0fdf4;border-left:3px solid #15803d;padding:8px 12px;font-size:13px;color:#166534"><b>回复：</b>${esc(i.reply)}</div>` : ''}
       <div class="acts">
@@ -197,7 +192,6 @@ document.getElementById('issueList').addEventListener('change', async e=>{
 document.getElementById('issueList').addEventListener('click', async e=>{
   const replyBtn = e.target.closest('[data-reply-id]');
   const delBtn = e.target.closest('[data-del-id]');
-
   if(replyBtn){
     const id = replyBtn.dataset.replyId;
     const current = replyBtn.closest('.item').querySelector('div[style*="f0fdf4"]');
@@ -209,7 +203,6 @@ document.getElementById('issueList').addEventListener('click', async e=>{
     toast('回复已保存');
     loadIssues(); loadStats();
   }
-
   if(delBtn){
     if(!confirm('确定删除这条记录吗？')) return;
     const { error } = await supabase.from('issues').delete().eq('id', delBtn.dataset.delId);
@@ -219,35 +212,25 @@ document.getElementById('issueList').addEventListener('click', async e=>{
   }
 });
 
-// ---------- 公告管理 ----------
 document.getElementById('noticeForm').addEventListener('submit', async e=>{
   e.preventDefault();
   const f = e.target;
-  const title = f.title.value.trim();
-  const content = f.content.value.trim();
+  const title = f.title.value.trim(), content = f.content.value.trim();
   if(!title)   return toast('请填写标题', true);
   if(!content) return toast('请填写内容', true);
-
   const btn = f.querySelector('button[type="submit"]');
   btn.disabled = true; btn.textContent = '发布中…';
-
   const { error } = await supabase.from('notices').insert([{ title, content, important: f.important.checked }]);
-
   btn.disabled = false; btn.textContent = '发布公告';
-
   if(error){ toast('发布失败：' + error.message, true); return; }
-  f.reset();
-  toast('公告已发布');
-  loadAdminNotices();
+  f.reset(); toast('公告已发布'); loadAdminNotices();
 });
 
 async function loadAdminNotices(){
   const box = document.getElementById('adminNoticeList');
   const { data, error } = await supabase.from('notices').select('*').order('created_at', { ascending: false });
-
   if(error){ box.innerHTML = emptyBox('加载失败'); return; }
   if(!data.length){ box.innerHTML = emptyBox('还没有发布过公告'); return; }
-
   box.innerHTML = data.map(n=>`
     <div class="item">
       <h3>${n.important?'<span class="tag red">置顶</span>':''}${esc(n.title)}</h3>
@@ -263,39 +246,30 @@ document.getElementById('adminNoticeList').addEventListener('click', async e=>{
   if(!confirm('确定删除这条公告吗？')) return;
   const { error } = await supabase.from('notices').delete().eq('id', btn.dataset.noticeDel);
   if(error){ toast('删除失败', true); return; }
-  toast('已删除');
-  loadAdminNotices();
+  toast('已删除'); loadAdminNotices();
 });
 
-// ---------- 数据概览 ----------
 async function loadStats(){
   const { data } = await supabase.from('issues').select('status, category');
   if(!data){ return; }
-
   const total = data.length;
   const c = s => data.filter(i=>i.status===s).length;
-
   document.getElementById('statGrid').innerHTML = `
     <div class="stat"><div class="n">${total}</div><div class="l">总上报</div></div>
     <div class="stat"><div class="n">${c('pending')}</div><div class="l">待处理</div></div>
     <div class="stat"><div class="n">${c('processing')}</div><div class="l">处理中</div></div>
     <div class="stat"><div class="n">${c('done')}</div><div class="l">已完成</div></div>
   `;
-
   const map = {};
   data.forEach(i => { map[i.category] = (map[i.category]||0)+1; });
   const entries = Object.entries(map).sort((a,b)=>b[1]-a[1]);
   const max = Math.max(1, ...entries.map(e=>e[1]));
-
   document.getElementById('catChart').innerHTML = entries.length
     ? entries.map(([k,n])=>`<div class="bar"><div class="name">${esc(k)}</div><div class="track"><div class="fill" style="width:${(n/max*100).toFixed(1)}%"></div></div><div style="width:28px;text-align:right;color:#888">${n}</div></div>`).join('')
     : emptyBox('暂无数据');
 }
 
-// ---------- 启动 ----------
-loadIssues();
-loadAdminNotices();
-loadStats();
+loadIssues(); loadAdminNotices(); loadStats();
 </script>
 </body>
 </html>
