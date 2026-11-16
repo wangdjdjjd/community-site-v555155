@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小区物业服务台 · 管理端</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font:14px/1.6 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#222;background:#fafafa}
+button{font:inherit;cursor:pointer}
+header{padding:12px 18px;background:#fff;border-bottom:1px solid #e6e6e6}
+h1{font-size:15px;font-weight:600}
+main{max-width:900px;margin:0 auto;padding:18px 14px 60px}
+.tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.tab{border:1px solid #ddd;background:#fff;padding:6px 14px;border-radius:4px;color:#555;font-size:13px}
+.tab.on{background:#2563eb;border-color:#2563eb;color:#fff}
+.panel{display:none}
+.panel.on{display:block}
+.card{background:#fff;border:1px solid #e6e6e6;border-radius:6px;padding:16px;margin-bottom:12px}
+h2{font-size:14px;font-weight:600;margin-bottom:12px;padding-left:8px;border-left:3px solid #2563eb}
+label{display:block;font-size:13px;color:#555;margin-bottom:5px}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font:inherit;background:#fff}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#2563eb}
+textarea{min-height:80px;resize:vertical}
+.field{margin-bottom:12px}
+.btn{background:#2563eb;color:#fff;border:0;padding:9px 20px;border-radius:4px;font-size:14px}
+.btn:hover{background:#1d4ed8}
+.btn.gray{background:#fff;color:#555;border:1px solid #ddd}
+.btn.red{background:#fff;color:#dc2626;border:1px solid #fca5a5}
+.btn.sm{padding:5px 12px;font-size:13px}
+.item{background:#fff;border:1px solid #e6e6e6;border-radius:6px;padding:14px 16px;margin-bottom:10px}
+.item h3{font-size:14px;font-weight:600;margin-bottom:6px}
+.item p{color:#555;white-space:pre-wrap;margin-bottom:8px}
+.meta{font-size:13px;color:#444;display:flex;flex-wrap:wrap;gap:4px 16px;margin-bottom:8px}
+.meta b{font-weight:400;color:#999}
+.foot{font-size:12px;color:#999;border-top:1px solid #f0f0f0;padding-top:8px;margin-top:8px}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:3px;margin-right:6px}
+.tag.blue{background:#e8f0fe;color:#1d4ed8}
+.tag.purple{background:#f5e8ff;color:#8b1fa8}
+.tag.yellow{background:#fff4e0;color:#b45309}
+.tag.green{background:#e6f7ec;color:#15803d}
+.tag.red{background:#fee;color:#c00}
+.acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid #f0f0f0}
+.empty{text-align:center;color:#999;padding:40px 10px;background:#fff;border:1px dashed #ddd;border-radius:6px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:14px}
+.stat{background:#fff;border:1px solid #e6e6e6;border-radius:6px;padding:12px}
+.stat .n{font-size:22px;font-weight:600}
+.stat .l{font-size:12px;color:#888}
+.bar{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px}
+.bar .name{width:100px;flex:none;color:#555}
+.bar .track{flex:1;height:8px;background:#eee;border-radius:4px;overflow:hidden}
+.bar .fill{height:100%;background:#2563eb}
+#toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);background:#333;color:#fff;padding:9px 18px;border-radius:4px;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:99}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#toast.err{background:#dc2626}
+</style>
+</head>
+<body>
+<header><h1>阳光花园小区 · 物业服务台（管理端）</h1></header>
+<main>
+  <div class="tabs">
+    <button class="tab on" data-tab="issues">业务表单</button>
+    <button class="tab" data-tab="notice">公告管理</button>
+    <button class="tab" data-tab="stats">数据概览</button>
+  </div>
+
+  <div class="panel on" id="issues">
+    <div class="tabs" id="adminFilters" style="margin-bottom:12px">
+      <button class="tab on" data-filter="all">全部</button>
+      <button class="tab" data-filter="pending">待处理</button>
+      <button class="tab" data-filter="processing">处理中</button>
+      <button class="tab" data-filter="done">已完成</button>
+    </div>
+    <div id="issueList"></div>
+  </div>
+
+  <div class="panel" id="notice">
+    <div class="card" style="margin-bottom:14px">
+      <h2>发布新公告</h2>
+      <form id="noticeForm" autocomplete="off">
+        <div class="field"><label>标题</label><input name="title" placeholder="如：小区停水通知"></div>
+        <div class="field"><label>内容</label><textarea name="content" placeholder="公告正文…"></textarea></div>
+        <div class="field"><label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" name="important" style="width:auto"> 置顶</label></div>
+        <button type="submit" class="btn">发布公告</button>
+      </form>
+    </div>
+    <h2 style="margin-bottom:10px">已发布公告</h2>
+    <div id="adminNoticeList"></div>
+  </div>
+
+  <div class="panel" id="stats">
+    <div class="stats" id="statGrid"></div>
+    <div class="card"><h2>问题分类分布</h2><div id="catChart"></div></div>
+  </div>
+</main>
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ====== 填写你的 Supabase 信息（与居民端相同） ======
+const SUPABASE_URL = 'https://sdelfnsqkxlqqbirkzds.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_4J-OF-nVY5dt-qxr5SreXQ_EWWxBt1X';
+// =================================================
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const STATUS = {
+  pending:    { text:'待处理', cls:'yellow' },
+  processing: { text:'处理中', cls:'blue' },
+  done:       { text:'已完成', cls:'green' }
+};
+let adminFilter = 'all';
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function pad(n){ return String(n).padStart(2,'0'); }
+function fmt(v){
+  if(!v) return '';
+  const d = new Date(v);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function emptyBox(msg){ return `<div class="empty">${msg}</div>`; }
+
+let toastTimer;
+function toast(msg, isErr){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'on' + (isErr ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.className='', 2600);
+}
+
+// ---------- 标签页 ----------
+document.querySelectorAll('.tabs').forEach(tabs=>{
+  tabs.addEventListener('click', e=>{
+    const btn = e.target.closest('.tab'); if(!btn) return;
+    tabs.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on', b===btn));
+    const section = tabs.parentElement;
+    Array.from(section.children).forEach(p=>{
+      if(p.classList.contains('panel')) p.classList.toggle('on', p.id===btn.dataset.tab);
+    });
+  });
+});
+
+// ---------- 业务表单 ----------
+async function loadIssues(){
+  const box = document.getElementById('issueList');
+  let query = supabase.from('issues').select('*').order('created_at', { ascending: false });
+  if(adminFilter !== 'all') query = query.eq('status', adminFilter);
+
+  const { data, error } = await query;
+
+  if(error){ box.innerHTML = emptyBox('加载失败，请刷新重试'); return; }
+  if(!data.length){ box.innerHTML = emptyBox('该分类下暂无记录'); return; }
+
+  box.innerHTML = data.map(i=>{
+    const st = STATUS[i.status] || STATUS.pending;
+    const kindTag = i.kind==='public' ? '<span class="tag blue">公共</span>' : '<span class="tag purple">个人</span>';
+    return `<div class="item">
+      <h3>${kindTag}<span class="tag ${st.cls}">${st.text}</span>${esc(i.title)}</h3>
+      ${i.description ? `<p>${esc(i.description)}</p>` : ''}
+      <div class="meta">
+        <div><b>分类：</b>${esc(i.category)}</div>
+        <div><b>位置：</b>${esc(i.location)}</div>
+        <div><b>联系：</b>${esc(i.contact)} ${esc(i.phone)}</div>
+        <div><b>时间：</b>${fmt(i.created_at)}</div>
+        ${i.kind==='personal' && i.appoint ? `<div><b>预约：</b>${fmt(i.appoint)}</div>` : ''}
+      </div>
+      ${i.reply ? `<div style="background:#f0fdf4;border-left:3px solid #15803d;padding:8px 12px;font-size:13px;color:#166534"><b>回复：</b>${esc(i.reply)}</div>` : ''}
+      <div class="acts">
+        <select data-status-id="${i.id}" style="width:auto;padding:5px 10px;font-size:13px">
+          <option value="pending" ${i.status==='pending'?'selected':''}>待处理</option>
+          <option value="processing" ${i.status==='processing'?'selected':''}>处理中</option>
+          <option value="done" ${i.status==='done'?'selected':''}>已完成</option>
+        </select>
+        <button class="btn gray sm" data-reply-id="${i.id}">回复</button>
+        <button class="btn red sm" data-del-id="${i.id}">删除</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+document.getElementById('adminFilters').addEventListener('click', e=>{
+  const btn = e.target.closest('.tab'); if(!btn) return;
+  adminFilter = btn.dataset.filter;
+  document.querySelectorAll('#adminFilters .tab').forEach(b=>b.classList.toggle('on', b===btn));
+  loadIssues();
+});
+
+document.getElementById('issueList').addEventListener('change', async e=>{
+  const sel = e.target.closest('[data-status-id]'); if(!sel) return;
+  const { error } = await supabase.from('issues').update({ status: sel.value }).eq('id', sel.dataset.statusId);
+  if(error){ toast('更新失败', true); return; }
+  toast('状态已更新');
+  loadIssues(); loadStats();
+});
+
+document.getElementById('issueList').addEventListener('click', async e=>{
+  const replyBtn = e.target.closest('[data-reply-id]');
+  const delBtn = e.target.closest('[data-del-id]');
+
+  if(replyBtn){
+    const id = replyBtn.dataset.replyId;
+    const current = replyBtn.closest('.item').querySelector('div[style*="f0fdf4"]');
+    const old = current ? current.textContent.replace('回复：','').trim() : '';
+    const txt = prompt('请输入回复内容：', old);
+    if(txt === null) return;
+    const { error } = await supabase.from('issues').update({ reply: txt.trim(), status: 'processing' }).eq('id', id);
+    if(error){ toast('回复失败', true); return; }
+    toast('回复已保存');
+    loadIssues(); loadStats();
+  }
+
+  if(delBtn){
+    if(!confirm('确定删除这条记录吗？')) return;
+    const { error } = await supabase.from('issues').delete().eq('id', delBtn.dataset.delId);
+    if(error){ toast('删除失败', true); return; }
+    toast('已删除');
+    loadIssues(); loadStats();
+  }
+});
+
+// ---------- 公告管理 ----------
+document.getElementById('noticeForm').addEventListener('submit', async e=>{
+  e.preventDefault();
+  const f = e.target;
+  const title = f.title.value.trim();
+  const content = f.content.value.trim();
+  if(!title)   return toast('请填写标题', true);
+  if(!content) return toast('请填写内容', true);
+
+  const btn = f.querySelector('button[type="submit"]');
+  btn.disabled = true; btn.textContent = '发布中…';
+
+  const { error } = await supabase.from('notices').insert([{ title, content, important: f.important.checked }]);
+
+  btn.disabled = false; btn.textContent = '发布公告';
+
+  if(error){ toast('发布失败：' + error.message, true); return; }
+  f.reset();
+  toast('公告已发布');
+  loadAdminNotices();
+});
+
+async function loadAdminNotices(){
+  const box = document.getElementById('adminNoticeList');
+  const { data, error } = await supabase.from('notices').select('*').order('created_at', { ascending: false });
+
+  if(error){ box.innerHTML = emptyBox('加载失败'); return; }
+  if(!data.length){ box.innerHTML = emptyBox('还没有发布过公告'); return; }
+
+  box.innerHTML = data.map(n=>`
+    <div class="item">
+      <h3>${n.important?'<span class="tag red">置顶</span>':''}${esc(n.title)}</h3>
+      <p>${esc(n.content)}</p>
+      <div class="foot">${fmt(n.created_at)}</div>
+      <div class="acts"><button class="btn red sm" data-notice-del="${n.id}">删除</button></div>
+    </div>
+  `).join('');
+}
+
+document.getElementById('adminNoticeList').addEventListener('click', async e=>{
+  const btn = e.target.closest('[data-notice-del]'); if(!btn) return;
+  if(!confirm('确定删除这条公告吗？')) return;
+  const { error } = await supabase.from('notices').delete().eq('id', btn.dataset.noticeDel);
+  if(error){ toast('删除失败', true); return; }
+  toast('已删除');
+  loadAdminNotices();
+});
+
+// ---------- 数据概览 ----------
+async function loadStats(){
+  const { data } = await supabase.from('issues').select('status, category');
+  if(!data){ return; }
+
+  const total = data.length;
+  const c = s => data.filter(i=>i.status===s).length;
+
+  document.getElementById('statGrid').innerHTML = `
+    <div class="stat"><div class="n">${total}</div><div class="l">总上报</div></div>
+    <div class="stat"><div class="n">${c('pending')}</div><div class="l">待处理</div></div>
+    <div class="stat"><div class="n">${c('processing')}</div><div class="l">处理中</div></div>
+    <div class="stat"><div class="n">${c('done')}</div><div class="l">已完成</div></div>
+  `;
+
+  const map = {};
+  data.forEach(i => { map[i.category] = (map[i.category]||0)+1; });
+  const entries = Object.entries(map).sort((a,b)=>b[1]-a[1]);
+  const max = Math.max(1, ...entries.map(e=>e[1]));
+
+  document.getElementById('catChart').innerHTML = entries.length
+    ? entries.map(([k,n])=>`<div class="bar"><div class="name">${esc(k)}</div><div class="track"><div class="fill" style="width:${(n/max*100).toFixed(1)}%"></div></div><div style="width:28px;text-align:right;color:#888">${n}</div></div>`).join('')
+    : emptyBox('暂无数据');
+}
+
+// ---------- 启动 ----------
+loadIssues();
+loadAdminNotices();
+loadStats();
+</script>
+</body>
+</html>

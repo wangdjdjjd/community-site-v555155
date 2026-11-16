@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>小区物业服务台 · 居民端</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font:14px/1.6 -apple-system,"PingFang SC","Microsoft YaHei",sans-serif;color:#222;background:#fafafa}
+button{font:inherit;cursor:pointer}
+header{padding:12px 18px;background:#fff;border-bottom:1px solid #e6e6e6}
+h1{font-size:15px;font-weight:600}
+main{max-width:820px;margin:0 auto;padding:18px 14px 60px}
+.tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.tab{border:1px solid #ddd;background:#fff;padding:6px 14px;border-radius:4px;color:#555;font-size:13px}
+.tab.on{background:#2563eb;border-color:#2563eb;color:#fff}
+.panel{display:none}
+.panel.on{display:block}
+.card{background:#fff;border:1px solid #e6e6e6;border-radius:6px;padding:16px;margin-bottom:12px}
+h2{font-size:14px;font-weight:600;margin-bottom:12px;padding-left:8px;border-left:3px solid #2563eb}
+label{display:block;font-size:13px;color:#555;margin-bottom:5px}
+input,select,textarea{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:4px;font:inherit;background:#fff}
+input:focus,select:focus,textarea:focus{outline:none;border-color:#2563eb}
+textarea{min-height:80px;resize:vertical}
+.field{margin-bottom:12px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.radio-row{display:flex;gap:10px}
+.radio-row label{display:flex;align-items:center;gap:6px;border:1px solid #ddd;border-radius:4px;padding:8px 12px;flex:1;cursor:pointer;margin:0}
+.radio-row input{width:auto}
+.radio-row label.on{border-color:#2563eb;background:#f0f5ff;color:#2563eb}
+.btn{background:#2563eb;color:#fff;border:0;padding:9px 20px;border-radius:4px;font-size:14px}
+.btn:hover{background:#1d4ed8}
+.btn.block{width:100%}
+.item{background:#fff;border:1px solid #e6e6e6;border-radius:6px;padding:14px 16px;margin-bottom:10px}
+.item h3{font-size:14px;font-weight:600;margin-bottom:6px}
+.item p{color:#555;white-space:pre-wrap;margin-bottom:8px}
+.meta{font-size:13px;color:#444;display:flex;flex-wrap:wrap;gap:4px 16px;margin-bottom:8px}
+.meta b{font-weight:400;color:#999}
+.foot{font-size:12px;color:#999;border-top:1px solid #f0f0f0;padding-top:8px;margin-top:8px}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:3px;margin-right:6px}
+.tag.blue{background:#e8f0fe;color:#1d4ed8}
+.tag.purple{background:#f5e8ff;color:#8b1fa8}
+.tag.yellow{background:#fff4e0;color:#b45309}
+.tag.green{background:#e6f7ec;color:#15803d}
+.tag.red{background:#fee;color:#c00}
+.empty{text-align:center;color:#999;padding:40px 10px;background:#fff;border:1px dashed #ddd;border-radius:6px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,10px);background:#333;color:#fff;padding:9px 18px;border-radius:4px;font-size:13px;opacity:0;pointer-events:none;transition:.2s;z-index:99}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#toast.err{background:#dc2626}
+@media(max-width:560px){.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header><h1>阳光花园小区 · 物业服务台（居民端）</h1></header>
+<main>
+  <div class="tabs">
+    <button class="tab on" data-tab="notice">小区公告</button>
+    <button class="tab" data-tab="report">问题上报</button>
+    <button class="tab" data-tab="mine">我的上报</button>
+  </div>
+
+  <div class="panel on" id="notice"><div id="noticeList"></div></div>
+
+  <div class="panel" id="report">
+    <div class="card">
+      <h2>提交问题反馈</h2>
+      <form id="reportForm" autocomplete="off">
+        <div class="field">
+          <label>问题类型</label>
+          <div class="radio-row">
+            <label class="on"><input type="radio" name="kind" value="public" checked>公共问题</label>
+            <label><input type="radio" name="kind" value="personal">个人报修</label>
+          </div>
+        </div>
+        <div class="row">
+          <div class="field"><label>分类</label><select name="category" id="category"></select></div>
+          <div class="field"><label>位置</label><input name="location" id="location" placeholder="如：3号楼西侧健身区"></div>
+        </div>
+        <div class="field"><label>标题</label><input name="title" placeholder="如：路灯不亮"></div>
+        <div class="field"><label>详细描述</label><textarea name="description" placeholder="具体情况、发生时间、影响范围…"></textarea></div>
+        <div class="row">
+          <div class="field"><label>联系人</label><input name="contact" placeholder="您的称呼"></div>
+          <div class="field"><label>电话</label><input name="phone" placeholder="方便物业联系您"></div>
+        </div>
+        <div class="field" id="appointWrap" style="display:none">
+          <label>预约上门时间（可选）</label>
+          <input type="datetime-local" name="appoint">
+        </div>
+        <button type="submit" class="btn block">提交上报</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="panel" id="mine"><div id="mineList"></div></div>
+</main>
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+// ====== 填写你的 Supabase 信息 ======
+const SUPABASE_URL = 'https://sdelfnsqkxlqqbirkzds.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_4J-OF-nVY5dt-qxr5SreXQ_EWWxBt1X';
+// ===================================
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+const STATUS = {
+  pending:    { text:'待处理', cls:'yellow' },
+  processing: { text:'处理中', cls:'blue' },
+  done:       { text:'已完成', cls:'green' }
+};
+const CATS = {
+  public:   ['道路破损','路灯照明','绿化养护','电梯故障','环境卫生','安防门禁','健身器材','其他'],
+  personal: ['水电维修','门窗维修','下水道堵塞','家电维修','墙面地面','锁具维修','其他']
+};
+
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function pad(n){ return String(n).padStart(2,'0'); }
+function fmt(v){
+  if(!v) return '';
+  const d = new Date(v);
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function emptyBox(msg){ return `<div class="empty">${msg}</div>`; }
+
+let toastTimer;
+function toast(msg, isErr){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'on' + (isErr ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>el.className='', 2600);
+}
+
+// ---------- 标签页 ----------
+document.querySelectorAll('.tabs').forEach(tabs=>{
+  tabs.addEventListener('click', e=>{
+    const btn = e.target.closest('.tab'); if(!btn) return;
+    tabs.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on', b===btn));
+    const section = tabs.parentElement;
+    Array.from(section.children).forEach(p=>{
+      if(p.classList.contains('panel')) p.classList.toggle('on', p.id===btn.dataset.tab);
+    });
+  });
+});
+
+// ---------- 公告 ----------
+async function loadNotices(){
+  const box = document.getElementById('noticeList');
+  const { data, error } = await supabase
+    .from('notices')
+    .select('*')
+    .order('important', { ascending: false })
+    .order('created_at', { ascending: false });
+
+  if(error){ box.innerHTML = emptyBox('公告加载失败，请稍后刷新'); return; }
+  if(!data.length){ box.innerHTML = emptyBox('暂无公告'); return; }
+
+  box.innerHTML = data.map(n=>`
+    <div class="item">
+      <h3>${n.important?'<span class="tag red">置顶</span>':''}${esc(n.title)}</h3>
+      <p>${esc(n.content)}</p>
+      <div class="foot">物业服务中心 · ${fmt(n.created_at)}</div>
+    </div>
+  `).join('');
+}
+
+// ---------- 上报表单 ----------
+const reportForm = document.getElementById('reportForm');
+
+function syncKind(){
+  const kind = reportForm.querySelector('input[name="kind"]:checked').value;
+  document.getElementById('category').innerHTML = CATS[kind].map(c=>`<option value="${c}">${c}</option>`).join('');
+  document.getElementById('location').placeholder = kind==='public' ? '如：3号楼西侧健身区' : '如：5号楼2单元301室';
+  document.getElementById('appointWrap').style.display = kind==='personal' ? '' : 'none';
+}
+reportForm.querySelectorAll('input[name="kind"]').forEach(r=>{
+  r.addEventListener('change', ()=>{
+    reportForm.querySelectorAll('.radio-row label').forEach(l=>l.classList.toggle('on', l.querySelector('input').checked));
+    syncKind();
+  });
+});
+syncKind();
+
+reportForm.addEventListener('submit', async e=>{
+  e.preventDefault();
+  const f = e.target;
+  const kind = f.querySelector('input[name="kind"]:checked').value;
+  const data = {
+    kind,
+    category: f.category.value,
+    location: f.location.value.trim(),
+    title: f.title.value.trim(),
+    description: f.description.value.trim(),
+    contact: f.contact.value.trim(),
+    phone: f.phone.value.trim(),
+    appoint: kind==='personal' ? f.appoint.value : '',
+    status: 'pending'
+  };
+
+  if(!data.location) return toast('请填写具体位置', true);
+  if(!data.title)    return toast('请填写问题标题', true);
+  if(!data.contact)  return toast('请填写联系人', true);
+  if(data.phone.replace(/\D/g,'').length < 6) return toast('请填写有效电话', true);
+
+  const btn = f.querySelector('button[type="submit"]');
+  btn.disabled = true; btn.textContent = '提交中…';
+
+  const { error } = await supabase.from('issues').insert([data]);
+
+  btn.disabled = false; btn.textContent = '提交上报';
+
+  if(error){ toast('提交失败：' + error.message, true); return; }
+
+  f.reset();
+  reportForm.querySelectorAll('.radio-row label').forEach(l=>l.classList.toggle('on', l.querySelector('input').checked));
+  syncKind();
+  toast('上报成功，物业会尽快处理');
+  document.querySelector('.tab[data-tab="mine"]').click();
+  loadMine();
+});
+
+// ---------- 我的上报 ----------
+async function loadMine(){
+  const box = document.getElementById('mineList');
+  const { data, error } = await supabase
+    .from('issues')
+    .select('*')
+    .order('created_at', { ascending: false });
+
+  if(error){ box.innerHTML = emptyBox('加载失败，请刷新重试'); return; }
+  if(!data.length){ box.innerHTML = emptyBox('您还没有提交过问题反馈'); return; }
+
+  box.innerHTML = data.map(i=>{
+    const st = STATUS[i.status] || STATUS.pending;
+    const kindTag = i.kind==='public' ? '<span class="tag blue">公共问题</span>' : '<span class="tag purple">个人报修</span>';
+    return `<div class="item">
+      <h3>${kindTag}<span class="tag ${st.cls}">${st.text}</span>${esc(i.title)}</h3>
+      ${i.description ? `<p>${esc(i.description)}</p>` : ''}
+      <div class="meta">
+        <div><b>分类：</b>${esc(i.category)}</div>
+        <div><b>位置：</b>${esc(i.location)}</div>
+        <div><b>联系人：</b>${esc(i.contact)} ${esc(i.phone)}</div>
+        <div><b>上报：</b>${fmt(i.created_at)}</div>
+        ${i.kind==='personal' && i.appoint ? `<div><b>预约：</b>${fmt(i.appoint)}</div>` : ''}
+      </div>
+      ${i.reply ? `<div style="background:#f0fdf4;border-left:3px solid #15803d;padding:8px 12px;font-size:13px;color:#166534"><b>物业回复：</b>${esc(i.reply)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ---------- 启动 ----------
+loadNotices();
+loadMine();
+</script>
+</body>
+</html>
